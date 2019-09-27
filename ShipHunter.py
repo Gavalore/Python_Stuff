@@ -19,11 +19,11 @@ notes on what I've done:
 
 * suggestions for further improvements
     * pass in the ship id to the get_zkill_data() method instead of looping
-    * pass in the number of seconds requested to get_zkill_data()
+    * pass in the number of seconds requested to get_zkill_data() - DONE
     * fetch esi information right when you get the zkill info
-    * hard-cap the amount of time you sleep between zkill requests
+    * hard-cap the amount of time you sleep between zkill requests - DONE
     * send errors to stderr instead of stdout
-    * add timeouts to the request calls
+    * add timeouts to the request calls - DONE
     * extra bonus points: spin up another worker thread pool, feed info to it
       via a queue, and get some concurrency to speed up requests
 
@@ -48,6 +48,18 @@ spec_edition_ships = [
     2834,
     3518,
     33673,
+    # Faction Caps
+    3514,
+    45649,
+    42241,
+    42126,
+    45645,
+    42242,
+    42133,
+    45647,
+    42243,
+    42124,
+    42132
 ]
 
 
@@ -67,26 +79,26 @@ def lookup_ids(ids):
 
 
 # Make request to zkillboard to get killmails, from the last 7 days, for each AT ship
-def get_zkill_data():
+def get_zkill_data(ship, pastSeconds):
     full_data = []
     req_delay = 0.25
-    for ship in spec_edition_ships:
-        try:
-            base_url = "https://zkillboard.com/api/"
-            url = f"{base_url}kills/shipTypeID/{ship}/pastSeconds/604800/"
-            response = requests.get(url)
-            response.raise_for_status()
-        except HTTPError as http_err:
-            print(f"HTTP Error has occurred: {http_err}")
-        except Exception as err:
-            print(f"Error has occurred: {err}")
-        else:
-            data = response.json()
-            if data:
-                full_data.extend(data)
+    try:
+        base_url = "https://zkillboard.com/api/"
+        url = f"{base_url}kills/shipTypeID/{ship}/pastSeconds/{pastSeconds}/"
+        response = requests.get(url, timeout=5.0)
+        response.raise_for_status()
+    except HTTPError as http_err:
+        print(f"HTTP Error has occurred: {http_err}")
+    except Exception as err:
+        print(f"Error has occurred: {err}")
+    except TimeoutError as timeout:
+        print(f"Timeout error has occurred: {timeout}")
+    else:
+        data = response.json()
+        if req_delay <= 1.75:
             req_delay += 0.25
-            time.sleep(req_delay)
-    return full_data
+        time.sleep(req_delay)
+        return data
 
 
 # Get detailed info from ESI about a killmail
@@ -96,12 +108,14 @@ def get_esi_killmail(kill_hash=None, kill_id=None):
         return
     try:
         url = f"https://esi.evetech.net/latest/killmails/{kill_id}/{kill_hash}/?datasource=tranquility"
-        response = requests.get(url)
+        response = requests.get(url, timeout=5.0)
         response.raise_for_status()
     except HTTPError as http_err:
         print(f"HTTP Error has occurred: {http_err}")
     except Exception as err:
         print(f"Error has occurred: {err}")
+    except TimeoutError as timeout:
+        print(f"Timeout error has occurred: {timeout}")
     else:
         data = response.json()
         return data
@@ -114,12 +128,14 @@ def get_system_name(system_id):
         return
     try:
         url = f"https://esi.evetech.net/latest/universe/systems/{system_id}/?datasource=tranquility&language=en-us"
-        response = requests.get(url)
+        response = requests.get(url, timeout=5.0)
         response.raise_for_status()
     except HTTPError as http_err:
         print(f"HTTP Error has occurred: {http_err}")
     except Exception as err:
         print(f"Error has occurred: {err}")
+    except TimeoutError as timeout:
+        print(f"Timeout error has occurred: {timeout}")
     else:
         data = response.json()
         return data
@@ -132,12 +148,14 @@ def get_pilot_name(char_id):
         return
     try:
         url = f"https://esi.evetech.net/latest/characters/{char_id}/?datasource=tranquility"
-        response = requests.get(url)
+        response = requests.get(url, timeout=0.5)
         response.raise_for_status()
     except HTTPError as http_err:
         print(f"HTTP Error has occurred: {http_err}")
     except Exception as err:
         print(f"Error has occurred: {err}")
+    except TimeoutError as timeout:
+        print(f"Timeout error has occurred: {timeout}")
     else:
         data = response.json()
         return data
@@ -150,19 +168,25 @@ def get_ship_data(ship_id):
         return
     try:
         url = f"https://esi.evetech.net/latest/universe/types/{ship_id}/?datasource=tranquility&language=en-us"
-        response = requests.get(url)
+        response = requests.get(url, timeout=5.0)
         response.raise_for_status()
     except HTTPError as http_err:
         print(f"HTTP Error has occurred: {http_err}")
     except Exception as err:
         print(f"Error has occurred: {err}")
+    except TimeoutError as timeout:
+        print(f"Timeout error has occurred: {timeout}")
     else:
         data = response.json()
         return data
 
 
 def main():
-    zkill_data = get_zkill_data()
+    zkill_data = []
+    for ship in spec_edition_ships:
+        data = get_zkill_data(ship, 604800)
+        if data:
+            zkill_data.extend(data)
 
     # just to make things faster, let's build a set of stuff to look up
     ids_to_look_up = set()
@@ -203,7 +227,6 @@ def main():
         kill_id = kill["killmail_id"]
         kill_hash = kill["zkb"]["hash"]
         link = f"https://zkillboard.com/kill/{kill_id}"
-        # Invoke HTTP Request functions.
         esi_data = kill["esi_data"]  # what we saved above
         location_id = esi_data["solar_system_id"]
         # Set default variables
