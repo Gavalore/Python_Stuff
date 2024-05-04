@@ -1,0 +1,38 @@
+[
+  {
+    "name": "game1",
+    "description": "",
+    "external_gameid": "gameid_1",
+    "provider": "Hacksaw",
+    "third_party_provider_tag": "",
+    "rtp": "95.62",
+    "category": "Slot"
+  },
+  {
+    "name": "game2",
+    "description": "",
+    "external_gameid": "gameid_2",
+    "provider": "Red Rake",
+    "third_party_provider_tag": "",
+    "rtp": "95.62",
+    "category": "Slot"
+  },
+  {
+    "name": "game3",
+    "description": "",
+    "external_gameid": "gameid_3",
+    "provider": "Third party",
+    "third_party_provider_tag": "Wazdan",
+    "rtp": "95.62",
+    "category": "Slot"
+  },
+  {
+    "name": "game4",
+    "description": "",
+    "external_gameid": "gameid_4",
+    "provider": "Third party",
+    "third_party_provider_tag": "Wazdan",
+    "rtp": "95.62",
+    "category": "Slot"
+  }
+]
